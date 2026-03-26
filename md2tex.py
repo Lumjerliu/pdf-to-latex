@@ -22,18 +22,20 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Fix missing space after \angle: \angleD -> \angle D
     content = re.sub(r'\\angle([A-Z])', r'\\angle \1', content)
     
+    # Remove orphan underscores followed by text (like "2023_Sunday" -> "2023 Sunday")
+    # Pattern: number or punctuation followed by _ then letter
+    content = re.sub(r'([0-9.,;:!?\)])_([A-Za-z])', r'\1 \2', content)
+    
     # Handle italic text _text_ (full pattern with both underscores)
-    # This handles patterns like _Saturday, 8. July 2023_
     content = re.sub(r'_([A-Za-z][^_]+?)_', r'\\textit{\1}', content)
     
-    # Remove orphan underscores at start of line (not part of a pair)
-    # Pattern: _Word at start of line without closing underscore
+    # Remove remaining orphan underscores at start of line
     content = re.sub(r'^_([A-Za-z])', r'\1', content, flags=re.MULTILINE)
     
-    # Remove orphan underscores after space (not part of a pair)
+    # Remove orphan underscores after space
     content = re.sub(r' _([A-Za-z])', r' \1', content)
     
-    # Fix pattern: \) _ text _ -> \) \textit{text} (with space before _)
+    # Fix pattern: \) _ text _ -> \) \textit{text}
     while '\\) _' in content:
         start = content.find('\\) _')
         if start == -1:
@@ -44,7 +46,7 @@ def convert_mmd_to_latex(input_file, output_file=None):
         text = content[start+4:end]
         content = content[:start] + '\\) \\textit{' + text + '}' + content[end+1:]
     
-    # Fix pattern: \)_ text _ -> \) \textit{text} (without space)
+    # Fix pattern: \)_ text _ -> \) \textit{text}
     while '\\)_' in content:
         start = content.find('\\)_')
         if start == -1:
@@ -55,10 +57,10 @@ def convert_mmd_to_latex(input_file, output_file=None):
         text = content[start+3:end]
         content = content[:start] + '\\) \\textit{' + text + '}' + content[end+1:]
     
-    # Fix broken math expressions with <*> pattern FIRST
+    # Fix broken math expressions with <*> pattern
     content = re.sub(r'<\*\s+\\?\(', r'\\) \\(', content)
     
-    # Remove lines that are clearly truncated (end with + or other operators in math)
+    # Remove lines that are clearly truncated
     lines = content.split('\n')
     new_lines = []
     for line in lines:
@@ -67,7 +69,7 @@ def convert_mmd_to_latex(input_file, output_file=None):
         new_lines.append(line)
     content = '\n'.join(new_lines)
     
-    # Fix incomplete inline math - close any unclosed math
+    # Fix incomplete inline math
     lines = content.split('\n')
     new_lines = []
     for line in lines:
@@ -80,7 +82,7 @@ def convert_mmd_to_latex(input_file, output_file=None):
         new_lines.append(line)
     content = '\n'.join(new_lines)
     
-    # Remove incomplete display math \[ that doesn't end with \]
+    # Remove incomplete display math
     lines = content.split('\n')
     new_lines = []
     in_incomplete_math = False
@@ -110,16 +112,14 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Convert **text** to \textbf{text}
     content = re.sub(r'\*\*([^*]+?)\*\*', r'\\textbf{\1}', content)
     
-    # Fix patterns like \(d\)_-division_ - inline math followed by italic with hyphen
+    # Fix patterns like \(d\)_-division_
     content = re.sub(r'\\?\(([^)]+?)\\?\)_-([a-zA-Z]+)_', r'\\(\1\\)\\textit{-\2}', content)
     
-    # Fix bullet points: <*> at start of line -> \item
+    # Fix bullet points
     content = re.sub(r'^<\*\s*', r'\\item ', content, flags=re.MULTILINE)
-    
-    # Fix bullet points: * at start of line -> \item
     content = re.sub(r'^\*\s+', r'\\item ', content, flags=re.MULTILINE)
     
-    # Wrap consecutive \item lines in itemize environment
+    # Wrap \item lines in itemize environment
     lines = content.split('\n')
     new_lines = []
     in_itemize = False
@@ -165,7 +165,7 @@ def convert_mmd_to_latex(input_file, output_file=None):
 \setlength{\parskip}{0.5em}
 \setcounter{secnumdepth}{0}
 
-\title{Converted Document}
+\title{IMO 2023 Problems}
 \author{}
 \date{}
 
