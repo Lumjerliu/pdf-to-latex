@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to LaTeX Converter</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/latex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 PDF to LaTeX Converter</h1>
+            <p class="subtitle">Convert PDF documents to LaTeX using open source OCR models</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-area" id="dropZone">
+                    <div class="upload-icon">📁</div>
+                    <p>Drag & drop a PDF file here, or click to select</p>
+                    <input type="file" id="fileInput" accept=".pdf" hidden>
+                    <button class="btn btn-primary" id="selectBtn">Select PDF</button>
+                </div>
+                
+                <div class="selected-file" id="selectedFile" style="display: none;">
+                    <span id="fileName"></span>
+                    <button class="btn btn-secondary" id="clearBtn">Clear</button>
+                </div>
+            </section>
+
+            <!-- Options Section -->
+            <section class="options-section">
+                <h2>Conversion Options</h2>
+                
+                <div class="option-group">
+                    <label for="backend">OCR Backend</label>
+                    <select id="backend">
+                        <option value="nougat">Nougat (Recommended)</option>
+                        <option value="texify">Texify</option>
+                        <option value="pix2tex">LaTeX-OCR (pix2tex)</option>
+                    </select>
+                    <p class="help-text" id="backendHelp">
+                        Meta's model for scientific papers with math and tables
+                    </p>
+                </div>
+
+                <div class="option-group">
+                    <label for="format">Output Format</label>
+                    <select id="format">
+                        <option value="markdown">Markdown with LaTeX (Mathpix)</option>
+                        <option value="latex">Pure LaTeX</option>
+                    </select>
+                    <p class="help-text">
+                        Markdown preserves structure; LaTeX is ready for compilation
+                    </p>
+                </div>
+            </section>
+
+            <!-- Convert Button -->
+            <section class="action-section">
+                <button class="btn btn-convert" id="convertBtn" disabled>
+                    <span class="btn-text">Convert to LaTeX</span>
+                    <span class="btn-loading" style="display: none;">
+                        <span class="spinner"></span> Converting...
+                    </span>
+                </button>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">Processing...</p>
+            </section>
+
+            <!-- Result Section -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <h2>Conversion Result</h2>
+                
+                <div class="result-info">
+                    <span class="badge badge-success" id="pagesProcessed">0 pages</span>
+                    <span class="badge" id="outputFormat">markdown</span>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn btn-secondary" id="copyBtn">📋 Copy to Clipboard</button>
+                    <button class="btn btn-secondary" id="downloadBtn">⬇️ Download</button>
+                </div>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span id="codeLanguage">markdown</span>
+                        <button class="btn btn-small" id="toggleWrap">Toggle Wrap</button>
+                    </div>
+                    <pre><code id="outputCode" class="language-markdown"></code></pre>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-message">
+                    <span class="error-icon">⚠️</span>
+                    <span id="errorText"></span>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Powered by open source OCR models:
+                <a href="https://github.com/facebookresearch/nougat" target="_blank">Nougat</a>,
+                <a href="https://github.com/VikParuchuri/texify" target="_blank">Texify</a>,
+                <a href="https://github.com/lukas-blecher/LaTeX-OCR" target="_blank">LaTeX-OCR</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
