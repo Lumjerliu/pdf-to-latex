@@ -1,6 +1,6 @@
-# PDF to LaTeX Converter
+# PDF/Image to LaTeX Converter
 
-Convert any PDF to LaTeX with one command. Uses Meta's Nougat OCR model.
+Convert any PDF or image to LaTeX with one command. Uses Meta's Nougat OCR model.
 
 ## Installation
 
@@ -17,8 +17,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 pip install albumentations==1.3.1 transformers==4.36.0
 
-# Install LaTeX compiler (macOS)
-brew install tectonic poppler
+# Install LaTeX compiler and tools (macOS)
+brew install tectonic poppler imagemagick
 ```
 
 ## Usage
@@ -26,12 +26,20 @@ brew install tectonic poppler
 ### One Command
 
 ```bash
-./convert.sh your_file.pdf
+# Convert a PDF
+./convert.sh document.pdf
+
+# Convert an image
+./convert.sh equation.png
+
+# Convert any image format
+./convert.sh screenshot.jpg
+./convert.sh scan.tiff
 ```
 
-That's it! This creates:
-- `output/your_file.tex` - LaTeX source
-- `output/your_file.pdf` - Compiled PDF
+Output:
+- `output/filename.tex` - LaTeX source
+- `output/filename.pdf` - Compiled PDF
 
 ### With Options
 
@@ -40,13 +48,13 @@ That's it! This creates:
 ./convert.sh paper.pdf -t "My Research Paper"
 
 # Use a different output directory
-./convert.sh document.pdf -o results
+./convert.sh image.png -o results
 ```
 
 ### Step by Step (Manual)
 
 ```bash
-# Step 1: OCR the PDF
+# Step 1: OCR the file
 CUDA_VISIBLE_DEVICES="" nougat your_file.pdf -o output/ -m 0.1.0-base
 
 # Step 2: Convert to LaTeX
@@ -55,6 +63,13 @@ python3 md2tex.py output/your_file.mmd
 # Step 3: Compile
 cd output && tectonic your_file_full.tex
 ```
+
+## Supported Formats
+
+| Type | Extensions |
+|------|------------|
+| PDF | `.pdf` |
+| Images | `.png`, `.jpg`, `.jpeg`, `.tiff`, `.bmp` |
 
 ## What the Converter Handles
 
@@ -68,19 +83,20 @@ The `md2tex.py` converter automatically fixes:
 
 ## Tips
 
-- **Apple Silicon (M1/M2/M3)**: The script automatically uses CPU to avoid memory issues
+- **Apple Silicon (M1/M2/M3)**: Script automatically uses CPU to avoid memory issues
 - **Large PDFs**: Processing takes ~1-2 minutes per page on CPU
-- **Complex layouts**: The base model (`0.1.0-base`) is used for better accuracy
+- **Complex layouts**: Base model (`0.1.0-base`) is used for better accuracy
+- **Images with equations**: Works great for math screenshots
 - **Diagrams**: Add TikZ code to the `.tex` file for geometry diagrams
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `convert.sh` | One-command converter script |
+| `convert.sh` | One-command converter (PDF + images) |
 | `md2tex.py` | Markdown to LaTeX converter |
 | `converter.py` | PDF conversion logic |
-| `input/` | Put your PDFs here |
+| `input/` | Put your files here |
 | `output/` | Generated files go here |
 
 ## Troubleshooting
@@ -90,9 +106,11 @@ The `md2tex.py` converter automatically fixes:
 | MPS out of memory | Script handles this automatically |
 | albumentations error | `pip install albumentations==1.3.1` |
 | transformers error | `pip install transformers==4.36.0` |
+| Image not recognized | Ensure imagemagick is installed |
 | Compilation errors | Check the `.tex` file for remaining issues |
 
 ## Credits
 
 - [Nougat](https://github.com/facebookresearch/nougat) by Meta AI - OCR model
 - [Tectonic](https://tectonic-typesetting.github.io/) - LaTeX compiler
+- [ImageMagick](https://imagemagick.org/) - Image processing
