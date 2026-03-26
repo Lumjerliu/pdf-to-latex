@@ -1,17 +1,11 @@
 # PDF to LaTeX Converter
 
-Convert any PDF to LaTeX using AI. Perfect for academic papers, math documents, and scientific articles.
-
-## What This Does
-
-```
-PDF → Nougat OCR → Markdown+LaTeX → Pure LaTeX → PDF
-```
+Convert any PDF to LaTeX with one command.
 
 ## Installation
 
 ```bash
-# 1. Clone the repo
+# 1. Clone and setup
 git clone https://github.com/Lumjerliu/pdf-to-latex.git
 cd pdf-to-latex
 
@@ -29,68 +23,55 @@ brew install tectonic
 
 ## Usage
 
-### Step 1: Convert PDF to Markdown+LaTeX
+### Option 1: One Command (Recommended)
 
 ```bash
-CUDA_VISIBLE_DEVICES="" nougat your_file.pdf -o output/ --markdown -m 0.1.0-small
+# Put your PDF in the input folder, then:
+./convert.sh input/your_file.pdf
+
+# Or use any path:
+./convert.sh ~/Desktop/paper.pdf
 ```
 
-This creates `output/your_file.mmd` (or `.tex`).
+That's it! This creates:
+- `output/your_file.tex` - LaTeX source
+- `output/your_file.pdf` - Compiled PDF
 
-### Step 2: Convert to Compilable LaTeX
+### Option 2: Step by Step
 
 ```bash
+# Step 1: OCR the PDF
+CUDA_VISIBLE_DEVICES="" nougat your_file.pdf -o output/ --markdown
+
+# Step 2: Convert to LaTeX
 python3 md2tex.py output/your_file.mmd -o output/your_file.tex
+
+# Step 3: Compile
+cd output && tectonic your_file.tex
 ```
-
-### Step 3: Compile to PDF
-
-```bash
-cd output
-tectonic your_file.tex
-```
-
-Done! Open `your_file.pdf` to see the result.
 
 ## Example
 
 ```bash
-# Convert a paper
-CUDA_VISIBLE_DEVICES="" nougat paper.pdf -o output/ --markdown
-
-# Make it compilable
-python3 md2tex.py output/paper.mmd -o output/paper.tex
-
-# Compile
-cd output && tectonic paper.tex && open paper.pdf
+./convert.sh ~/Desktop/IMO2024SL.pdf
+# Output: output/IMO2024SL.tex and output/IMO2024SL.pdf
 ```
 
 ## Tips
 
-- **Apple Silicon (M1/M2/M3)**: Always use `CUDA_VISIBLE_DEVICES=""` to force CPU and avoid memory issues
-- **Large PDFs**: Use `-m 0.1.0-small` for faster processing
+- **Apple Silicon (M1/M2/M3)**: The script automatically uses CPU to avoid memory issues
 - **Edit the title**: Open `md2tex.py` and change the `\title{}` line
-
-## Project Files
-
-| File | Purpose |
-|------|---------|
-| `converter.py` | PDF conversion logic |
-| `md2tex.py` | Markdown to LaTeX converter |
-| `app.py` | Web interface (optional) |
-| `requirements.txt` | Python dependencies |
+- **Large PDFs**: Processing takes ~1-2 minutes per page on CPU
 
 ## Troubleshooting
 
-**"MPS out of memory"** → Add `CUDA_VISIBLE_DEVICES=""` before the command
-
-**"albumentations error"** → Run `pip install albumentations==1.3.1`
-
-**"transformers error"** → Run `pip install transformers==4.36.0`
-
-**Slow processing** → CPU is slower but stable. Use a CUDA GPU for speed.
+| Problem | Solution |
+|---------|----------|
+| MPS out of memory | Script handles this automatically |
+| albumentations error | `pip install albumentations==1.3.1` |
+| transformers error | `pip install transformers==4.36.0` |
 
 ## Credits
 
-- [Nougat](https://github.com/facebookresearch/nougat) by Meta AI - The OCR model
-- [Tectonic](https://tectonic-typesetting.github.io/) - LaTeX compiler
+- [Nougat](https://github.com/facebookresearch/nougat) by Meta AI
+- [Tectonic](https://tectonic-typesetting.github.io/) LaTeX compiler
