@@ -22,6 +22,17 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Fix missing space after \angle: \angleD -> \angle D
     content = re.sub(r'\\angle([A-Z])', r'\\angle \1', content)
     
+    # Handle italic text _text_ (full pattern with both underscores)
+    # This handles patterns like _Saturday, 8. July 2023_
+    content = re.sub(r'_([A-Za-z][^_]+?)_', r'\\textit{\1}', content)
+    
+    # Remove orphan underscores at start of line (not part of a pair)
+    # Pattern: _Word at start of line without closing underscore
+    content = re.sub(r'^_([A-Za-z])', r'\1', content, flags=re.MULTILINE)
+    
+    # Remove orphan underscores after space (not part of a pair)
+    content = re.sub(r' _([A-Za-z])', r' \1', content)
+    
     # Fix pattern: \) _ text _ -> \) \textit{text} (with space before _)
     while '\\) _' in content:
         start = content.find('\\) _')
@@ -99,10 +110,6 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Convert **text** to \textbf{text}
     content = re.sub(r'\*\*([^*]+?)\*\*', r'\\textbf{\1}', content)
     
-    # Handle italic text patterns like (_text_) and _text_
-    content = re.sub(r'\(_([^_]+?)_\)', r'(\\textit{\1})', content)
-    content = re.sub(r'(?<!\w)_([A-Za-z][^_]+?)_(?!\w)', r'\\textit{\1}', content)
-    
     # Fix patterns like \(d\)_-division_ - inline math followed by italic with hyphen
     content = re.sub(r'\\?\(([^)]+?)\\?\)_-([a-zA-Z]+)_', r'\\(\1\\)\\textit{-\2}', content)
     
@@ -158,7 +165,7 @@ def convert_mmd_to_latex(input_file, output_file=None):
 \setlength{\parskip}{0.5em}
 \setcounter{secnumdepth}{0}
 
-\title{65th International Mathematical Olympiad\\Shortlist 2024}
+\title{Converted Document}
 \author{}
 \date{}
 
