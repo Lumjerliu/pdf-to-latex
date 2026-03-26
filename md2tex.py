@@ -1,12 +1,29 @@
 #!/usr/bin/env python3
-"""Convert Mathpix Markdown to proper LaTeX document."""
+"""
+Convert Mathpix Markdown (Nougat output) to compilable LaTeX.
+This converter is designed to handle common OCR artifacts and produce
+clean, compilable LaTeX for any PDF.
+"""
 
 import re
 import sys
+import os
 
-def convert_mmd_to_latex(input_file, output_file=None):
+def convert_mmd_to_latex(input_file, output_file=None, title=None):
+    """
+    Convert Nougat's Mathpix Markdown output to compilable LaTeX.
+    
+    Args:
+        input_file: Path to .mmd or .tex file from Nougat
+        output_file: Output path (optional)
+        title: Document title (optional, extracted from content if not provided)
+    """
     with open(input_file, 'r', encoding='utf-8') as f:
         content = f.read()
+    
+    # ============================================
+    # STEP 1: Remove OCR artifacts
+    # ============================================
     
     # Remove MISSING_PAGE markers
     content = re.sub(r'\[MISSING_PAGE[^\]]*\]\n*', '', content)
@@ -14,20 +31,37 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Remove [0.5cm] markers
     content = content.replace('[0.5cm]', '\n\\vspace{0.5cm}\n')
     
-    # Fix invalid LaTeX patterns
-    content = content.replace('\\vdots\\.\\]', '\\vdots\\]')  # Fix \vdots\.\] -> \vdots\]
-    content = content.replace('\\.', '')  # Remove other invalid \. commands
-    content = content.replace('\\)_._', '\\).')  # Fix \)_._ -> \).
+    # Remove invalid \. commands (but keep valid ones like \vdots)
+    content = re.sub(r'\\(?!vdots|dots|cdots|ldots|ddots)\.', '', content)
+    
+    # ============================================
+    # STEP 2: Fix LaTeX command spacing
+    # ============================================
     
     # Fix missing space after \angle: \angleD -> \angle D
     content = re.sub(r'\\angle([A-Z])', r'\\angle \1', content)
     
-    # Remove orphan underscores followed by text (like "2023_Sunday" -> "2023 Sunday")
-    # Pattern: number or punctuation followed by _ then letter
-    content = re.sub(r'([0-9.,;:!?\)])_([A-Za-z])', r'\1 \2', content)
+    # Fix missing space after other common commands
+    for cmd in ['sin', 'cos', 'tan', 'log', 'ln', 'lim', 'max', 'min', 'sum', 'prod']:
+        content = re.sub(rf'\\{cmd}([A-Za-z])', rf'\\{cmd} \1', content)
     
-    # Handle italic text _text_ (full pattern with both underscores)
-    content = re.sub(r'_([A-Za-z][^_]+?)_', r'\\textit{\1}', content)
+    # ============================================
+    # STEP 3: Handle underscores (tricky!)
+    # ============================================
+    
+    # Remove orphan underscores: number/letter followed by _ then letter
+    # e.g., "2023_Sunday" -> "2023 Sunday"
+    content = re.sub(r'([0-9.,;:!?\)\]])_([A-Za-z])', r'\1 \2', content)
+    
+    # Handle italic text _text_ (must have both underscores)
+    def replace_italic(match):
+        text = match.group(1)
+        # Don't convert if it looks like a subscript
+        if re.match(r'^[0-9]+$', text) or re.match(r'^[a-z]$', text):
+            return match.group(0)  # Keep as is (likely subscript)
+        return f'\\textit{{{text}}}'
+    
+    content = re.sub(r'_([A-Za-z][^_\n]+?)_(?![a-zA-Z0-9])', replace_italic, content)
     
     # Remove remaining orphan underscores at start of line
     content = re.sub(r'^_([A-Za-z])', r'\1', content, flags=re.MULTILINE)
@@ -35,41 +69,34 @@ def convert_mmd_to_latex(input_file, output_file=None):
     # Remove orphan underscores after space
     content = re.sub(r' _([A-Za-z])', r' \1', content)
     
-    # Fix pattern: \) _ text _ -> \) \textit{text}
-    while '\\) _' in content:
-        start = content.find('\\) _')
-        if start == -1:
-            break
-        end = content.find('_', start + 4)
-        if end == -1:
-            break
-        text = content[start+4:end]
-        content = content[:start] + '\\) \\textit{' + text + '}' + content[end+1:]
+    # ============================================
+    # STEP 4: Fix broken math expressions
+    # ============================================
     
-    # Fix pattern: \)_ text _ -> \) \textit{text}
-    while '\\)_' in content:
-        start = content.find('\\)_')
-        if start == -1:
-            break
-        end = content.find('_', start + 3)
-        if end == -1:
-            break
-        text = content[start+3:end]
-        content = content[:start] + '\\) \\textit{' + text + '}' + content[end+1:]
+    # Fix <*> pattern (OCR error in math)
+    content = re.sub(r'<\*\s*\\?\(', r'\\) \\(', content)
     
-    # Fix broken math expressions with <*> pattern
-    content = re.sub(r'<\*\s+\\?\(', r'\\) \\(', content)
+    # Fix \)_ pattern (italic after math)
+    content = re.sub(r'\\\)\s*_([^_]+?)_', r'\\) \\textit{\1}', content)
     
-    # Remove lines that are clearly truncated
+    # Remove truncated lines (ending with operator in math)
     lines = content.split('\n')
     new_lines = []
     for line in lines:
-        if re.search(r'\\\([^)]*[+\-*/]$', line.strip()):
+        stripped = line.strip()
+        # Skip lines that look truncated
+        if re.search(r'\\\([^)]*[+\-*/<>=]$', stripped):
+            continue
+        if re.search(r'\$[^$]*[+\-*/<>=]$', stripped) and not re.search(r'\$[^$]*[+\-*/<>=]\$', stripped):
             continue
         new_lines.append(line)
     content = '\n'.join(new_lines)
     
-    # Fix incomplete inline math
+    # ============================================
+    # STEP 5: Balance math delimiters
+    # ============================================
+    
+    # Fix incomplete inline math \( \)
     lines = content.split('\n')
     new_lines = []
     for line in lines:
@@ -82,12 +109,12 @@ def convert_mmd_to_latex(input_file, output_file=None):
         new_lines.append(line)
     content = '\n'.join(new_lines)
     
-    # Remove incomplete display math
+    # Remove incomplete display math \[ \]
     lines = content.split('\n')
     new_lines = []
     in_incomplete_math = False
     
-    for i, line in enumerate(lines):
+    for line in lines:
         if '\\[' in line and '\\]' not in line:
             in_incomplete_math = True
             continue
@@ -103,28 +130,28 @@ def convert_mmd_to_latex(input_file, output_file=None):
     
     content = '\n'.join(new_lines)
     
-    # Convert ## headers to \section
+    # ============================================
+    # STEP 6: Convert Markdown to LaTeX
+    # ============================================
+    
+    # Headers
     content = re.sub(r'^## (.+)$', r'\\section*{\1}', content, flags=re.MULTILINE)
-    
-    # Convert ### headers to \subsection
     content = re.sub(r'^### (.+)$', r'\\subsection*{\1}', content, flags=re.MULTILINE)
+    content = re.sub(r'^# (.+)$', r'\\title{\1}', content, flags=re.MULTILINE)
     
-    # Convert **text** to \textbf{text}
+    # Bold
     content = re.sub(r'\*\*([^*]+?)\*\*', r'\\textbf{\1}', content)
     
-    # Fix patterns like \(d\)_-division_
-    content = re.sub(r'\\?\(([^)]+?)\\?\)_-([a-zA-Z]+)_', r'\\(\1\\)\\textit{-\2}', content)
-    
-    # Fix bullet points
+    # Bullet points
     content = re.sub(r'^<\*\s*', r'\\item ', content, flags=re.MULTILINE)
     content = re.sub(r'^\*\s+', r'\\item ', content, flags=re.MULTILINE)
     
-    # Wrap \item lines in itemize environment
+    # Wrap \item in itemize
     lines = content.split('\n')
     new_lines = []
     in_itemize = False
     
-    for i, line in enumerate(lines):
+    for line in lines:
         if line.strip().startswith('\\item'):
             if not in_itemize:
                 new_lines.append('\\begin{itemize}')
@@ -141,61 +168,103 @@ def convert_mmd_to_latex(input_file, output_file=None):
     
     content = '\n'.join(new_lines)
     
-    # Convert \(...\) inline math to $...$
+    # ============================================
+    # STEP 7: Convert math delimiters
+    # ============================================
+    
+    # \( ... \) -> $ ... $
     content = content.replace('\\(', '$')
     content = content.replace('\\)', '$')
     
-    # Convert \[...\] display math to equation* environment
+    # \[ ... \] -> equation* environment
     content = content.replace('\\[', '\n\\begin{equation*}')
     content = content.replace('\\]', '\\end{equation*}\n')
     
-    # Create full LaTeX document
-    latex_doc = r'''% !TEX program = xelatex
-\documentclass[11pt,a4paper]{article}
+    # ============================================
+    # STEP 8: Extract title if not provided
+    # ============================================
+    
+    if not title:
+        # Try to find a title in the first few lines
+        first_lines = content[:500]
+        title_match = re.search(r'\\title\{([^}]+)\}', first_lines)
+        if title_match:
+            title = title_match.group(1)
+            content = re.sub(r'\\title\{[^}]+\}\n?', '', content, count=1)
+        else:
+            # Look for a date or problem set identifier
+            date_match = re.search(r'(January|February|March|April|May|June|July|August|September|October|November|December).*\d{4}', first_lines)
+            if date_match:
+                title = date_match.group(0).strip()
+            else:
+                title = "Converted Document"
+    
+    # ============================================
+    # STEP 9: Create document
+    # ============================================
+    
+    latex_doc = f'''% !TEX program = xelatex
+\\documentclass[11pt,a4paper]{{article}}
 
-\usepackage{fontspec}
-\usepackage{amsmath,amssymb,amsthm}
-\usepackage{mathtools}
-\usepackage{geometry}
-\usepackage{hyperref}
-\usepackage{enumitem}
+\\usepackage{{fontspec}}
+\\usepackage{{amsmath,amssymb,amsthm}}
+\\usepackage{{mathtools}}
+\\usepackage{{geometry}}
+\\usepackage{{hyperref}}
+\\usepackage{{enumitem}}
+\\usepackage{{tikz}}
+\\usetikzlibrary{{calc,arrows.meta}}
 
-\geometry{margin=1in}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{0.5em}
-\setcounter{secnumdepth}{0}
+\\geometry{{margin=1in}}
+\\setlength{{\\parindent}}{{0pt}}
+\\setlength{{\\parskip}}{{0.5em}}
+\\setcounter{{secnumdepth}}{{0}}
 
-\title{IMO 2023 Problems}
-\author{}
-\date{}
+\\title{{{title}}}
+\\author{{}}
+\\date{{}}
 
-\begin{document}
+\\begin{{document}}
 
-\maketitle
+\\maketitle
 
-''' + content + r'''
+{content}
 
-\end{document}
+\\end{{document}}
 '''
     
     if output_file is None:
-        output_file = input_file.replace('.tex', '_full.tex')
+        output_file = input_file.rsplit('.', 1)[0] + '_full.tex'
     
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(latex_doc)
     
-    print(f"Converted {input_file} -> {output_file}")
+    print(f"Converted: {input_file}")
+    print(f"Output:    {output_file}")
     return output_file
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 md2tex.py input.tex [-o output.tex]")
+        print("Usage: python3 md2tex.py <input.mmd> [-o output.tex] [-t title]")
+        print("\nConverts Nougat's Mathpix Markdown to compilable LaTeX.")
         sys.exit(1)
     
     input_file = sys.argv[1]
     output_file = None
+    title = None
     
-    if '-o' in sys.argv:
-        output_file = sys.argv[sys.argv.index('-o') + 1]
+    # Parse arguments
+    args = sys.argv[2:]
+    i = 0
+    while i < len(args):
+        if args[i] == '-o' and i + 1 < len(args):
+            output_file = args[i + 1]
+            i += 2
+        elif args[i] == '-t' and i + 1 < len(args):
+            title = args[i + 1]
+            i += 2
+        else:
+            i += 1
     
-    convert_mmd_to_latex(input_file, output_file)
+    convert_mmd_to_latex(input_file, output_file, title)

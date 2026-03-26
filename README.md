@@ -1,67 +1,87 @@
 # PDF to LaTeX Converter
 
-Convert any PDF to LaTeX with one command.
+Convert any PDF to LaTeX with one command. Uses Meta's Nougat OCR model.
 
 ## Installation
 
 ```bash
-# 1. Clone and setup
+# Clone the repo
 git clone https://github.com/Lumjerliu/pdf-to-latex.git
 cd pdf-to-latex
 
-# 2. Create virtual environment
+# Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 pip install albumentations==1.3.1 transformers==4.36.0
 
-# 4. Install LaTeX compiler (macOS)
-brew install tectonic
+# Install LaTeX compiler (macOS)
+brew install tectonic poppler
 ```
 
 ## Usage
 
-### Option 1: One Command (Recommended)
+### One Command
 
 ```bash
-# Put your PDF in the input folder, then:
-./convert.sh input/your_file.pdf
-
-# Or use any path:
-./convert.sh ~/Desktop/paper.pdf
+./convert.sh your_file.pdf
 ```
 
 That's it! This creates:
 - `output/your_file.tex` - LaTeX source
 - `output/your_file.pdf` - Compiled PDF
 
-### Option 2: Step by Step
+### With Options
+
+```bash
+# Set a custom title
+./convert.sh paper.pdf -t "My Research Paper"
+
+# Use a different output directory
+./convert.sh document.pdf -o results
+```
+
+### Step by Step (Manual)
 
 ```bash
 # Step 1: OCR the PDF
-CUDA_VISIBLE_DEVICES="" nougat your_file.pdf -o output/ --markdown
+CUDA_VISIBLE_DEVICES="" nougat your_file.pdf -o output/ -m 0.1.0-base
 
 # Step 2: Convert to LaTeX
-python3 md2tex.py output/your_file.mmd -o output/your_file.tex
+python3 md2tex.py output/your_file.mmd
 
 # Step 3: Compile
-cd output && tectonic your_file.tex
+cd output && tectonic your_file_full.tex
 ```
 
-## Example
+## What the Converter Handles
 
-```bash
-./convert.sh ~/Desktop/IMO2024SL.pdf
-# Output: output/IMO2024SL.tex and output/IMO2024SL.pdf
-```
+The `md2tex.py` converter automatically fixes:
+- **OCR artifacts** - Missing pages, invalid commands
+- **Math delimiters** - Converts `\( \)` to `$ $` and `\[ \]` to `equation*`
+- **Markdown** - Headers, bold, italic, bullet points
+- **Underscores** - Fixes orphan underscores that break LaTeX
+- **Broken math** - Balances delimiters, removes truncated expressions
+- **Command spacing** - Fixes `\angleD` → `\angle D`
 
 ## Tips
 
 - **Apple Silicon (M1/M2/M3)**: The script automatically uses CPU to avoid memory issues
-- **Edit the title**: Open `md2tex.py` and change the `\title{}` line
 - **Large PDFs**: Processing takes ~1-2 minutes per page on CPU
+- **Complex layouts**: The base model (`0.1.0-base`) is used for better accuracy
+- **Diagrams**: Add TikZ code to the `.tex` file for geometry diagrams
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `convert.sh` | One-command converter script |
+| `md2tex.py` | Markdown to LaTeX converter |
+| `converter.py` | PDF conversion logic |
+| `input/` | Put your PDFs here |
+| `output/` | Generated files go here |
 
 ## Troubleshooting
 
@@ -70,8 +90,9 @@ cd output && tectonic your_file.tex
 | MPS out of memory | Script handles this automatically |
 | albumentations error | `pip install albumentations==1.3.1` |
 | transformers error | `pip install transformers==4.36.0` |
+| Compilation errors | Check the `.tex` file for remaining issues |
 
 ## Credits
 
-- [Nougat](https://github.com/facebookresearch/nougat) by Meta AI
-- [Tectonic](https://tectonic-typesetting.github.io/) LaTeX compiler
+- [Nougat](https://github.com/facebookresearch/nougat) by Meta AI - OCR model
+- [Tectonic](https://tectonic-typesetting.github.io/) - LaTeX compiler
